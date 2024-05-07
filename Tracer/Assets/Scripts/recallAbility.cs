@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class recallAbility : MonoBehaviour
+public class RecallAbility : MonoBehaviour
 {
     //how long the recall ability lasts
     public float maxDuration = 3;
@@ -17,12 +17,14 @@ public class recallAbility : MonoBehaviour
     public List<Vector3> positions;
 
     private bool recalling;
-    private float savePositionTimer;
-    private float maxPositionStored;
-  
+    private float saveStatsTimer;
+    private float maxStatsStored;
+
+
+    // Start is called before the first frame update
     void Start()
     {
-        maxPositionStored = maxDuration / saveInterval;
+        maxStatsStored = maxDuration / saveInterval;
     }
 
     // Update is called once per frame
@@ -30,61 +32,63 @@ public class recallAbility : MonoBehaviour
     {
         if (!recalling)
         {
-            if(Input.GetKeyDown(KeyCode.Z) && positions.Count > 0)
+            if(Input.GetKeyDown(KeyCode.Mouse1) && positions.Count > 0)
             {
                 recalling = true;
             }
 
-            if (savePositionTimer > 0)
+            if (saveStatsTimer > 0)
             {
-                savePositionTimer -= Time.deltaTime;
+                saveStatsTimer -= Time.deltaTime;
             }
             else
             {
-                SavePosition();
+                StoredStats();
             }
 
             cameraFX.alpha = Mathf.Lerp(cameraFX.alpha, 0, recallSpeed * Time.deltaTime);
         }
+
         else
         {
             if(positions.Count > 0)
             {
                 transform.position = Vector3.Lerp(transform.position, positions[0], recallSpeed * Time.deltaTime);
 
-                float distance = Vector3.Distance(transform.position, positions[0]);
-                if (distance < 0.25f)
+                float dist = Vector3.Distance(transform.position, positions[0]);
+                if(dist < 0.25f)
                 {
-                    SetPostion();
+                    SetStats();
                 }
             }
             else
             {
                 recalling = false;
             }
-
-            cameraFX.alpha = Mathf.Lerp(cameraFX.alpha, 0, recallSpeed * Time.deltaTime);
+            
+            
+            cameraFX.alpha = Mathf.Lerp(cameraFX.alpha, 1, recallSpeed * Time.deltaTime);
         }
     }
 
-
-    void SavePosition()
+    void StoredStats()
     {
-        savePositionTimer = saveInterval;
+        //set our stored timer
+        saveStatsTimer = saveInterval;
 
         positions.Insert(0, transform.position);
 
-        if(positions.Count > maxPositionStored)
+        if (positions.Count > maxStatsStored)
         {
             positions.RemoveAt(positions.Count - 1);
         }
     }
 
-    void SetPostion()
+    void SetStats()
     {
+        //Whenever you reach the posistion
         transform.position = positions[0];
 
         positions.RemoveAt(0);
-
     }
 }
