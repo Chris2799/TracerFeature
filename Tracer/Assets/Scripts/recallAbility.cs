@@ -1,94 +1,135 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class RecallAbility : MonoBehaviour
 {
-    //how long the recall ability lasts
-    public float maxDuration = 3;
-    //how long the current movement is saved (position and location)
-    public float saveInterval = 0.5f;
-    //how fast is the recall speed
-    public float recallSpeed = 18;
-    //this will turn the canvas UI like a camera effect
-    public CanvasGroup cameraFX;
+    //Storing how many positions that are saved
+    [SerializeField] private int maxRecallData = 6;
+    //how long you wait to receive new data position
+    [SerializeField] private float secondsBetweenPosition = 0.5f;
+    //how long it takes to get back to the old position
+    [SerializeField] private float recallDuration = 1.25f;
+
+    private CharacterController characterController;
+    //collect recall positions while not recalling
+    private bool collectRecalPosition = true;
+    //how long during the current position
+    private float currentPositionTimer = 0.5f;
 
 
-    public List<Vector3> positions;
-
-    private bool recalling;
-    private float saveStatsTimer;
-    private float maxStatsStored;
-
-
-    // Start is called before the first frame update
-    void Start()
+    //So you can see it while testing it(Debugging)
+    [System.Serializable]
+    private class RecallData
     {
-        maxStatsStored = maxDuration / saveInterval;
+        public Vector3 tracerPosition;
+        public Quaternion tracerRotation;
+        public Quaternion cameraRotation;
     }
 
-    // Update is called once per frame
-    void Update()
+
+    //This will store where you were 1, 2, 3 seconds ago
+    [SerializeField] private List<RecallData> recallData = new List<RecallData>();
+
+    private void Start()
     {
-        if (!recalling)
+        characterController = GetComponentInChildren<CharacterController>();
+    }
+
+    private void Update()
+    {
+        StoreRecallData();
+
+        //will draw a line behind tracer so you can physically see the position and location
+        for (int i = 0; i < recallData.Count - 1; i++)
         {
-            if(Input.GetKeyDown(KeyCode.Mouse1) && positions.Count > 0)
-            {
-                recalling = true;
-            }
-
-            if (saveStatsTimer > 0)
-            {
-                saveStatsTimer -= Time.deltaTime;
-            }
-            else
-            {
-                StoredStats();
-            }
-
-            cameraFX.alpha = Mathf.Lerp(cameraFX.alpha, 0, recallSpeed * Time.deltaTime);
+            Debug.DrawLine(recallData[i].tracerPosition, recallData[i + 1].tracerPosition);
         }
 
-        else
-        {
-            if(positions.Count > 0)
-            {
-                transform.position = Vector3.Lerp(transform.position, positions[0], recallSpeed * Time.deltaTime);
+        RecallInput();
+    }
 
-                float dist = Vector3.Distance(transform.position, positions[0]);
-                if(dist < 0.25f)
+    private void RecallInput()
+    {
+        if(Input.GetKeyDown(KeyCode.Mouse1))
+        {
+            StartCoroutine(Recall());
+        }
+    }
+    private void StoreRecallData()
+    {
+        currentPositionTimer += Time.deltaTime;
+
+        if(collectRecalPosition)
+        {
+            //This will store an array of tracers location
+            if (currentPositionTimer >= secondsBetweenPosition)
+            {
+                if(recallData.Count >= maxRecallData)
                 {
-                    SetStats();
+                    //As soon as reach the max recall limit (6) the array will start over at 0
+                    recallData.RemoveAt(0);
                 }
+
+                recallData.Add(GetRecallData());
+
+                //This will refresh the array
+                currentPositionTimer = 0f;
             }
-            else
-            {
-                recalling = false;
-            }
-            
-            
-            cameraFX.alpha = Mathf.Lerp(cameraFX.alpha, 1, recallSpeed * Time.deltaTime);
         }
     }
 
-    void StoredStats()
+    private RecallData GetRecallData()
     {
-        //set our stored timer
-        saveStatsTimer = saveInterval;
-
-        positions.Insert(0, transform.position);
-
-        if (positions.Count > maxStatsStored)
+        return new RecallData()
         {
-            positions.RemoveAt(positions.Count - 1);
-        }
+            tracerPosition = transform.position,
+            tracerRotation = transform.rotation,
+            cameraRotation = characterController.transform.rotation
+        };
     }
 
-    void SetStats()
+    private IEnumerator Recall()
     {
-        //Whenever you reach the posistion
-        transform.position = positions[0];
 
-        positions.RemoveAt(0);
+        //This will won't allow Tracer to collect position data while recalling
+        collectRecalPosition = false;
+
+        float secondsForEachPosition = recallDuration / recallData.Count;
+        //This will get Tracer from new position to old position in a certain amount of time
+        Vector3 currentDataPlayerStartPos = transform.position;
+        Quaternion currentPositionPlayerStartRotation = transform.rotation;
+        Quaternion currentPositionCameraStartRotation = characterController.transform.rotation;
+
+
+        while (recallData.Count > 0)
+        {
+            //the time of the current position of the array
+            float time = 0f;
+
+            //this what is going to be changing which is position and rotation overtime
+            while (time < secondsForEachPosition)
+            {
+                transform.position = Vector3.Lerp(currentDataPlayerStartPos, recallData[recallData.Count - 1].tracerPosition, time / secondsForEachPosition);
+
+                transform.rotation = Quaternion.Lerp(currentPositionPlayerStartRotation, recallData[recallData.Count - 1].tracerRotation, time / secondsForEachPosition);
+
+                characterController.transform.rotation = Quaternion.Lerp(currentPositionCameraStartRotation, recallData[recallData.Count - 1].cameraRotation, time / secondsForEachPosition);
+                time += Time.deltaTime;
+
+                yield return null;
+            }
+
+            //Restart
+            currentDataPlayerStartPos = recallData[recallData.Count - 1].tracerPosition;
+            currentPositionPlayerStartRotation = recallData[recallData.Count - 1].tracerRotation;
+            currentPositionCameraStartRotation = recallData[recallData.Count - 1].cameraRotation;
+
+            recallData.RemoveAt(recallData.Count - 1);
+        }
+
+        //Tracer can collect position data again
+        collectRecalPosition = true;
     }
 }

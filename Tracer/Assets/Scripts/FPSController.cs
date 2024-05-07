@@ -26,6 +26,8 @@ public class FPSController : MonoBehaviour
     private bool willMove = true;
     private CharacterController characterController;
 
+    
+
 
     
     void Start()
@@ -84,4 +86,6 @@ public class FPSController : MonoBehaviour
         }
        
     }
+
+    
 }
