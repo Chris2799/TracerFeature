@@ -10,7 +10,7 @@ public class BlinkAbility : MonoBehaviour
     public int distance;
     ParticleSystem trail;
 
-    private void Start()
+    void Start()
     {
         trail = transform.Find("Trail").GetComponent<ParticleSystem>();
     }
