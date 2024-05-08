@@ -8,8 +8,13 @@ public class BlinkAbility : MonoBehaviour
 
     public CharacterController controller;
     public int distance;
-  
-    
+    ParticleSystem trail;
+
+    private void Start()
+    {
+        trail = transform.Find("Trail").GetComponent<ParticleSystem>();
+    }
+
     void Update()
     {
         if (Input.GetMouseButtonDown(0))
